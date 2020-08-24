@@ -1,0 +1,59 @@
+﻿@model IEnumerable<PrimeSimulateur.Models.Logement>
+
+@{
+    ViewData["Title"] = "Index";
+}
+
+<h1>Index</h1>
+
+<p>
+    <a asp-action="Create">Create New</a>
+</p>
+<table class="table">
+    <thead>
+        <tr>
+            <th>
+                @Html.DisplayNameFor(model => model.adresse)
+            </th>
+            <th>
+                @Html.DisplayNameFor(model => model.Ville)
+            </th>
+            <th>
+                @Html.DisplayNameFor(model => model.TypeEnergie)
+            </th>
+            <th>
+                @Html.DisplayNameFor(model => model.surface)
+            </th>
+            <th>
+                @Html.DisplayNameFor(model => model.Client)
+            </th>
+            <th></th>
+        </tr>
+    </thead>
+    <tbody>
+@foreach (var item in Model) {
+        <tr>
+            <td>
+                @Html.DisplayFor(modelItem => item.adresse)
+            </td>
+            <td>
+                @Html.DisplayFor(modelItem => item.Ville)
+            </td>
+            <td>
+                @Html.DisplayFor(modelItem => item.TypeEnergie)
+            </td>
+            <td>
+                @Html.DisplayFor(modelItem => item.surface)
+            </td>
+            <td>
+                @Html.DisplayFor(modelItem => item.Client.email)
+            </td>
+            <td>
+                <a asp-action="Edit" asp-route-id="@item.LogementId">Edit</a> |
+                <a asp-action="Details" asp-route-id="@item.LogementId">Details</a> |
+                <a asp-action="Delete" asp-route-id="@item.LogementId">Delete</a>
+            </td>
+        </tr>
+}
+    </tbody>
+</table>

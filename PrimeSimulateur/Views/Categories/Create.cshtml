@@ -1,0 +1,65 @@
+﻿@model PrimeSimulateur.Models.Categorie
+
+@{
+    ViewData["Title"] = "Create";
+}
+
+<h1>Create</h1>
+
+<h4>Categorie</h4>
+<hr />
+<div class="row">
+    <div class="col-md-4">
+        <form asp-action="Create">
+            <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+              @if(ViewData["userRole"].ToString() == "Admin")
+            {
+
+            
+            <div class="form-group">
+                <label asp-for="type" class="control-label"></label>
+                <input asp-for="type" class="form-control" />
+                <span asp-validation-for="type" class="text-danger"></span>
+            </div>
+            }
+            else if (ViewData["userRole"].ToString() == "User")
+            {
+            <div class="form-group">
+                <label for="type">Choisir une categorie</label>
+                <select name="type" id="type" class="form-control">
+                    <option value="Biomasseperformante">Biomasseperformante</option>
+                    <option value="bois">bois</option>
+                    <option value="réseau de chaleur EnR&R">réseau de chaleur EnR&R</option>
+                    <option value="combleettoiture">systeme solaire</option>
+                    <option value="plancher bas">plancher bas</option>
+                    <option value="air/eau">combiné</option>
+                    <option value="eau/eau">combiné</option>
+                    <option value="hybride">combiné</option>
+                </select>
+            </div>
+                    }
+                
+            <div class="form-group">
+                <label asp-for="type" class="control-label"></label>
+                <input asp-for="type" class="form-control" />
+                <span asp-validation-for="type" class="text-danger"></span>
+            </div>
+
+            <div class="form-group">
+                <label asp-for="TravailId" class="control-label"></label>
+                <select asp-for="TravailId" class="form-control" asp-items="ViewBag.TravailId"></select>
+            </div>
+            <div class="form-group">
+                <input type="submit" value="Create" class="btn btn-primary" />
+            </div>
+        </form>
+    </div>
+</div>
+
+<div>
+    <a asp-action="Index">Back to List</a>
+</div>
+
+@section Scripts {
+    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+}

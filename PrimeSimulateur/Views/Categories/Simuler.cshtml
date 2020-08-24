@@ -1,0 +1,70 @@
+﻿
+@model PrimeSimulateur.Models.Categorie
+@{
+    ViewBag.Title = ("Simuler");
+}
+
+<h1>Simuler</h1>
+
+<hr />
+
+<form asp-action="Create">
+    <div class="row">
+        <div class="col-md-4">
+            <div class="form-group">
+                <label asp-for="type" class="control-label"></label>
+                <input asp-for="type" class="form-control" value="@ViewData["type"]" disabled />
+                <span asp-validation-for="type" class="text-danger"></span>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="form-group">
+                <label asp-for="TravailId" class="control-label"></label>
+                <input asp-for="TravailId" class="form-control" value="@ViewData["travailId"]" disabled />
+                <span asp-validation-for="TravailId" class="text-danger"></span>
+            </div>
+            @Html.ActionLink("Generate Devis", "Generate", "Categories")
+            @Html.ActionLink("Exporter en CSV", "Export", "Categories")
+        </div>
+        <div class="col-md-4">
+            <label>Prime </label>
+
+            @ViewData["prime"]
+            @if (ViewData["userRole"].ToString() == "Admin")
+            {
+                <label>iam the admin !</label>
+            }
+            else if (ViewData["userRole"].ToString() == "User")
+            {
+                <label>iam the user !</label>
+            }
+            <label>DHS</label>
+        </div>
+    </div>
+</form>
+@*<form asp-action="Create">
+        <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+        <div class="form-group">
+            <label asp-for="type" class="control-label"></label>
+            <input asp-for="type" class="form-control" value="@ViewData["type"]" disabled />
+            <span asp-validation-for="type" class="text-danger"></span>
+        </div>
+
+        <div class="form-group">
+            <label asp-for="TravailId" class="control-label"></label>
+            <input asp-for="TravailId" class="form-control" value="@ViewData["travailId"]" disabled />
+            <span asp-validation-for="TravailId" class="text-danger"></span>
+        </div>
+        @Html.ActionLink("Prime", "Simuler", "Categories")
+    </form>
+    @ViewData["prime"]
+            </div>
+    </div>*@
+
+<div>
+    <a asp-action="Index">Back to List</a>
+</div>
+
+@section Scripts {
+    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+}

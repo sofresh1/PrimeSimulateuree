@@ -1,0 +1,67 @@
+﻿@model PrimeSimulateur.Models.Travail
+
+@{
+    ViewData["Title"] = "Create";
+}
+
+<h1>Create</h1>
+
+<h4>Travail</h4>
+<hr />
+<div class="row">
+    <div class="col-md-4">
+        <form asp-action="Create">
+            <table class="table">
+                <thead>
+
+                    <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+                    @if(ViewData["userRole"].ToString() == "Admin")
+                    {
+                    <div class="form-group">
+                        <label asp-for="Name" class="control-label"></label>
+                        <input asp-for="Name" class="form-control" />
+                        <span asp-validation-for="Name" class="text-danger"></span>
+                    </div>
+                    }
+                    else if (ViewData["userRole"].ToString() == "User")
+                    {
+                    <div class="form-group">
+                        <label for="Name">Choisir un travail</label>
+                        <select name="Name" id="Name" class="form-control">
+                            <option value="chaudiere">chaudiere</option>
+                            <option value="raccordement">raccordement</option>
+                            <option value="isolation">isolation</option>
+                            <option value="systeme solaire">systeme solaire</option>
+                            <option value="pompe a chaleur">pompe a chaleur</option>
+                        </select>
+                    </div>
+                    }
+                    <div class="form-group">
+
+                        <label asp-for="Name" class="control-label"></label>
+                        <input asp-for="Name" class="form-control" />
+                        <span asp-validation-for="Name" class="text-danger"></span>
+                    </div>
+                    <div class="form-group">
+                        <label asp-for="surface" class="control-label"></label>
+                        <input asp-for="surface" class="form-control" />
+                        <span asp-validation-for="surface" class="text-danger"></span>
+                    </div>
+                    <div class="form-group">
+                        <label asp-for="LogementId" class="control-label"></label>
+                        <select asp-for="LogementId" class="form-control" asp-items="ViewBag.LogementId"></select>
+                    </div>
+                    <div class="form-group">
+                        <input type="submit" value="Create" class="btn btn-primary" />
+                    </div>
+</form>
+    </div>
+</div>
+
+    <div>
+        <a asp-action="Index">Back to List</a>
+    </div>
+
+    @section Scripts {
+        @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+    }
