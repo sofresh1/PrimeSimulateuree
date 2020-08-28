@@ -27,9 +27,28 @@ namespace PrimeSimulateur.Controllers
 
         // GET: Logements
         public async Task<IActionResult> Index()
+        
         {
-            var myDbContext = _context.Logements.Include(l => l.Client);
-            return View(await myDbContext.ToListAsync());
+            var user_ = await _userManager.FindByEmailAsync(User.Identity.Name);
+            var claimsList = User.Claims.ToList();
+            var role = claimsList[3].Value;
+            var clientId = (from C in _context.Clients
+                            where C.email == user_.Email
+                            select C.ClientId).FirstOrDefault();
+
+           if (role == "User")
+            {
+                var myDbContext = (from L in _context.Logements
+                                   join C in _context.Clients on L.ClientId equals C.ClientId
+                                   where C.ClientId == clientId
+                                   select L);
+                return View(await myDbContext.ToListAsync());
+            }
+            else
+            {
+                var myDbContext = _context.Logements.Include(l => l.Client);
+                return View(await myDbContext.ToListAsync());
+            }
         }
 
         // GET: Logements/Details/5
@@ -79,11 +98,16 @@ namespace PrimeSimulateur.Controllers
         {
             if (ModelState.IsValid)
             {
+                var user_ = await _userManager.FindByEmailAsync(User.Identity.Name);
+                var ClientId = (from C in _context.Clients
+                                where C.email == user_.Email
+                                select C.ClientId).FirstOrDefault();
+                logement.ClientId = ClientId;
                 _context.Add(logement);
                 await _context.SaveChangesAsync();
                 return RedirectToAction(nameof(Index));
             }
-            ViewData["ClientId"] = new SelectList(_context.Clients, "ClientId", "email", logement.ClientId);
+         //   ViewData["ClientId"] = new SelectList(_context.Clients, "ClientId", "email", logement.ClientId);
             return View(logement);
         }
 

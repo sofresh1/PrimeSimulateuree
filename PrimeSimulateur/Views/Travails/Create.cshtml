@@ -15,16 +15,29 @@
                 <thead>
 
                     <div asp-validation-summary="ModelOnly" class="text-danger"></div>
-                    @if(ViewData["userRole"].ToString() == "Admin")
-                    {
-                    <div class="form-group">
-                        <label asp-for="Name" class="control-label"></label>
-                        <input asp-for="Name" class="form-control" />
-                        <span asp-validation-for="Name" class="text-danger"></span>
-                    </div>
-                    }
-                    else if (ViewData["userRole"].ToString() == "User")
-                    {
+                    @*@if (objectUser == "ADMIN")
+        {
+            <div class="form-group">
+                <label asp-for="Name" class="control-label"></label>
+                <input asp-for="Name" class="form-control" />
+                <span asp-validation-for="Name" class="text-danger"></span>
+            </div>
+        }
+        else if (objectUser == "USER")
+        {
+            <div class="form-group">
+                <label for="Name">Choisir un travail</label>
+                <select name="Name" id="Name" class="form-control">
+                    <option value="chaudiere">chaudiere</option>
+                    <option value="raccordement">raccordement</option>
+                    <option value="isolation">isolation</option>
+                    <option value="systeme solaire">systeme solaire</option>
+                    <option value="pompe a chaleur">pompe a chaleur</option>
+        <option value="appareil de chauffage">appareil de chauffage</option>
+                </select>
+            </div>
+        }*@
+
                     <div class="form-group">
                         <label for="Name">Choisir un travail</label>
                         <select name="Name" id="Name" class="form-control">
@@ -33,14 +46,8 @@
                             <option value="isolation">isolation</option>
                             <option value="systeme solaire">systeme solaire</option>
                             <option value="pompe a chaleur">pompe a chaleur</option>
+                            <option value="appareil de chauffage">appareil de chauffage</option>
                         </select>
-                    </div>
-                    }
-                    <div class="form-group">
-
-                        <label asp-for="Name" class="control-label"></label>
-                        <input asp-for="Name" class="form-control" />
-                        <span asp-validation-for="Name" class="text-danger"></span>
                     </div>
                     <div class="form-group">
                         <label asp-for="surface" class="control-label"></label>
@@ -58,10 +65,10 @@
     </div>
 </div>
 
-    <div>
-        <a asp-action="Index">Back to List</a>
-    </div>
+<div>
+    <a asp-action="Index">Back to List</a>
+</div>
 
-    @section Scripts {
-        @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
-    }
+@section Scripts {
+    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+}

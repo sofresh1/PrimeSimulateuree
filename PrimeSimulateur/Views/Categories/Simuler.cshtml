@@ -30,15 +30,18 @@
             <label>Prime </label>
 
             @ViewData["prime"]
+          
+            <label>€</label>
+           </div>
+        <div>
             @if (ViewData["userRole"].ToString() == "Admin")
             {
-                <label>iam the admin !</label>
+                <label>Compte ADMIN</label>
             }
             else if (ViewData["userRole"].ToString() == "User")
             {
-                <label>iam the user !</label>
+                <label>Compte UTILISATEUR</label>
             }
-            <label>DHS</label>
         </div>
     </div>
 </form>

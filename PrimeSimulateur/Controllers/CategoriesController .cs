@@ -31,8 +31,28 @@ namespace PrimeSimulateur.Controllers
         // GET: Categories
         public async Task<IActionResult> Index()
         {
-            var myDbContext = _context.Categories.Include(c => c.Travail);
-            return View(await myDbContext.ToListAsync());
+            var user_ = await _userManager.FindByEmailAsync(User.Identity.Name);
+            var claimsList = User.Claims.ToList();
+            var role = claimsList[3].Value;
+            var clientId = (from C in _context.Clients
+                        where C.email == user_.Email
+                       select C.ClientId).FirstOrDefault();
+
+            if (role == "User")
+            {
+                var myDbContext = (from Cat in _context.Categories
+                                   join T in _context.Travails on Cat.TravailId equals T.TravailId  
+                                   join L in _context.Logements on T.LogementId equals L.LogementId
+                                   join C in _context.Clients on L.ClientId equals C.ClientId
+                                   where C.ClientId == clientId
+                                   select Cat);
+                return View(await myDbContext.ToListAsync());
+            }
+            else
+            {
+                var myDbContext = _context.Categories.Include(c => c.Travail);
+                return View(await myDbContext.ToListAsync());
+            }
         }
 
         // GET: Categories/Details/5
@@ -55,11 +75,26 @@ namespace PrimeSimulateur.Controllers
         }
 
         // GET: Categories/Create
-        public IActionResult Create()
+        public async Task<IActionResult> CreateAsync()
         {
-            ViewData["TravailId"] = new SelectList(_context.Travails, "TravailId", "TravailId");
-            return View();
-        }
+
+            
+                var user_ = await _userManager.FindByEmailAsync(User.Identity.Name);
+                var categories = (from Cat in _context.Categories
+                                  join T in _context.Travails on Cat.TravailId equals T.TravailId
+                                  join L in _context.Logements on T.LogementId equals L.LogementId
+                                  join C in _context.Clients on L.ClientId equals C.ClientId
+                                  where C.email == user_.Email
+
+                                  select new { T.TravailId, T.Name });
+
+
+                ViewData["TravailId"] = new SelectList(categories, "TravailId", "Name");
+                return View();
+
+            }
+        
+
 
         // POST: Categories/Create
         // To protect from overposting attacks, enable the specific properties you want to bind to, for 
@@ -77,6 +112,8 @@ namespace PrimeSimulateur.Controllers
             ViewData["TravailId"] = new SelectList(_context.Travails, "TravailId", "TravailId", categorie.TravailId);
             return View(categorie);
         }
+
+
 
         // GET: Categories/Edit/5
         public async Task<IActionResult> Edit(int? id)
@@ -178,9 +215,9 @@ namespace PrimeSimulateur.Controllers
         {
             var d = new PrimeSimulatorDocs(_context);
             var fileName = "test";
-
+            var user_ = await _userManager.FindByEmailAsync(User.Identity.Name);
             //add Id variable
-            var doc = await d.Generate(1);
+            var doc = await d.Generate(user_.Email);
 
             if (doc != null)
             {
@@ -205,7 +242,7 @@ namespace PrimeSimulateur.Controllers
 
             //add data from DB
             List<trace> list_travaux = await (from T in _context.trace
-                                              where T.UserId == user_.Id
+                                              where T.email == user_.Email
                                               select T).ToListAsync();
 
             var list_a_exporter = PrimeSimulatorDocs.ToDataTable(list_travaux);
@@ -220,21 +257,21 @@ namespace PrimeSimulateur.Controllers
             return File(Encoding.GetEncoding("ISO-8859-1").GetBytes(list_CSV.ToString()), "application/csv", $"Travaux.csv");
         }
 
-        public async Task<IActionResult> Simuler(int id)
+        public async Task<IActionResult> Simuler(int id, string type)
         {
-            ViewData["prime"] = await CalculerPrime(id);
+            ViewData["prime"] = await CalculerPrime(id, type);
 
             return View();
         }
 
-        private async Task<float> CalculerPrime(int travailId)
+        private async Task<float> CalculerPrime(int travailId, string type)
         {
             var request = (from T in _context.Travails
                            join L in _context.Logements on T.LogementId equals L.LogementId
                            join C in _context.Clients on L.ClientId equals C.ClientId
                            join S in _context.Situations on C.ClientId equals S.ClientId
                            join Cat in _context.Categories on T.TravailId equals Cat.TravailId
-                           where T.TravailId == travailId
+                           where T.TravailId == travailId && Cat.type == type  
                            select new { S, T, Cat, C }).FirstOrDefault();
             Client client = new Client
             {
@@ -265,158 +302,51 @@ namespace PrimeSimulateur.Controllers
 
             ViewData["travailId"] = travail.TravailId;
             ViewData["type"] = categorie.type;
-            ViewData["email"] = client.email;
-            
             float prime = 0;
 
             // Categorie commble et toiture
             if (travail.Name == "chaudiere")
             {
-                if ((categorie.type == "Biomasseperformante") || (categorie.type == "bois "))
                 {
-                    if (situation.Nombredepersonne == 1)
+                    if ((categorie.type == "Biomasseperformante") || (categorie.type == "bois"))
                     {
-                        // TRES MODESTE
-                        if (situation.Revenumenage <= 204700)
+                        if (situation.Nombredepersonne == 1)
                         {
-                            prime = 40000;
-                        }
+                            // TRES MODESTE
+                            if (situation.Revenumenage <= 20470)
+                            {
+                                prime = 40000;
+                            }
 
-                        //MODESTE
-                        if (situation.Revenumenage <= 250680)
-                        {
-                            prime = 40000;
-                        }
+                            //MODESTE
+                            if (situation.Revenumenage <= 25068)
+                            {
+                                prime = 40000;
+                            }
 
-                        //MOYEN ET SUPERIEUR
-                        if (situation.Revenumenage > 250680)
-                        {
-                            prime = 25000;
-                        }
-                    }
-                }
-                if (situation.Nombredepersonne == 2)
-                {
-                    // TRES MODESTE
-                    if (situation.Revenumenage <= 300440)
-                    {
-                        prime = 40000;
-                    }
-
-                    //MODESTE
-                    if (situation.Revenumenage <= 365720)
-                    {
-                        prime = 40000;
-                    }
-
-                    //MOYEN ET SUPERIEUR
-                    if (situation.Revenumenage > 365720)
-                    {
-                        prime = 25000;
-                    }
-                }
-                if (situation.Nombredepersonne == 3)
-                {
-                    // TRES MODESTE
-                    if (situation.Revenumenage <= 360800)
-                    {
-                        prime = 40000;
-                    }
-
-                    //MODESTE
-                    if (situation.Revenumenage <= 439240)
-                    {
-                        prime = 40000;
-                    }
-
-                    //MOYEN ET SUPERIEUR
-                    if (situation.Revenumenage > 432940)
-                    {
-                        prime = 25000;
-                    }
-                }
-                if (situation.Nombredepersonne == 4)
-                {
-                    // TRES MODESTE
-                    if (situation.Revenumenage <= 421280)
-                    {
-                        prime = 40000;
-                    }
-
-                    //MODESTE
-                    if (situation.Revenumenage <= 512890)
-                    {
-                        prime = 40000;
-                    }
-
-                    //MOYEN ET SUPERIEUR
-                    if (situation.Revenumenage > 512890)
-                    {
-                        prime = 25000;
-                    }
-                }
-                if (situation.Nombredepersonne == 5)
-                {
-                    // TRES MODESTE
-                    if (situation.Revenumenage <= 481980)
-                    {
-                        prime = 40000;
-                    }
-
-                    //MODESTE
-                    if (situation.Revenumenage <= 586740)
-                    {
-                        prime = 40000;
-                    }
-
-                    //MOYEN ET SUPERIEUR
-                    if (situation.Revenumenage > 586740)
-                    {
-                        prime = 25000;
-                    }
-                }
-            }
-
-            if (travail.Name == "raccordement")
-            {
-                if (categorie.type == "réseau de chaleur EnR&R")
-                {
-                    if (situation.Nombredepersonne == 1)
-                    {
-                        // TRES MODESTE
-                        if (situation.Revenumenage <= 204700)
-                        {
-                            prime = 40000;
-                        }
-
-                        //MODESTE
-                        if (situation.Revenumenage <= 250680)
-                        {
-                            prime = 40000;
-                        }
-
-                        //MOYEN ET SUPERIEUR
-                        if (situation.Revenumenage > 250680)
-                        {
-                            prime = 25000;
+                            //MOYEN ET SUPERIEUR
+                            if (situation.Revenumenage > 25068)
+                            {
+                                prime = 25000;
+                            }
                         }
                     }
                     if (situation.Nombredepersonne == 2)
                     {
                         // TRES MODESTE
-                        if (situation.Revenumenage <= 300440)
+                        if (situation.Revenumenage <= 30044)
                         {
                             prime = 40000;
                         }
 
                         //MODESTE
-                        if (situation.Revenumenage <= 365720)
+                        if (situation.Revenumenage <= 36572)
                         {
                             prime = 40000;
                         }
 
                         //MOYEN ET SUPERIEUR
-                        if (situation.Revenumenage > 365720)
+                        if (situation.Revenumenage > 36572)
                         {
                             prime = 25000;
                         }
@@ -424,19 +354,19 @@ namespace PrimeSimulateur.Controllers
                     if (situation.Nombredepersonne == 3)
                     {
                         // TRES MODESTE
-                        if (situation.Revenumenage <= 360800)
+                        if (situation.Revenumenage <= 36080)
                         {
                             prime = 40000;
                         }
 
                         //MODESTE
-                        if (situation.Revenumenage <= 439240)
+                        if (situation.Revenumenage <= 43924)
                         {
                             prime = 40000;
                         }
 
                         //MOYEN ET SUPERIEUR
-                        if (situation.Revenumenage > 432940)
+                        if (situation.Revenumenage > 43294)
                         {
                             prime = 25000;
                         }
@@ -444,19 +374,19 @@ namespace PrimeSimulateur.Controllers
                     if (situation.Nombredepersonne == 4)
                     {
                         // TRES MODESTE
-                        if (situation.Revenumenage <= 421280)
+                        if (situation.Revenumenage <= 42128)
                         {
                             prime = 40000;
                         }
 
                         //MODESTE
-                        if (situation.Revenumenage <= 512890)
+                        if (situation.Revenumenage <= 51289)
                         {
                             prime = 40000;
                         }
 
                         //MOYEN ET SUPERIEUR
-                        if (situation.Revenumenage > 512890)
+                        if (situation.Revenumenage > 51289)
                         {
                             prime = 25000;
                         }
@@ -464,58 +394,262 @@ namespace PrimeSimulateur.Controllers
                     if (situation.Nombredepersonne == 5)
                     {
                         // TRES MODESTE
-                        if (situation.Revenumenage <= 481980)
+                        if (situation.Revenumenage <= 48198)
                         {
                             prime = 40000;
                         }
 
                         //MODESTE
-                        if (situation.Revenumenage <= 586740)
+                        if (situation.Revenumenage <= 58674)
                         {
                             prime = 40000;
                         }
 
                         //MOYEN ET SUPERIEUR
-                        if (situation.Revenumenage > 586740)
+                        if (situation.Revenumenage > 58674)
                         {
                             prime = 25000;
                         }
                     }
-               //    // else for (int i = 6; i < 30; i++)
-               //      //   {
-               //        //     var y = 0;
-               //          //   if (situation.Nombredepersonne == i)
-               //             //// TRES MODESTE
-               //            // {
-               //               //  for (i = 6; i < 30; y++)
-               //                 //    y = y + 60590;
-               //                 //if (situation.Revenumenage <= 481980 + y)
-               //                 //{
-               //                  //   prime = 40000;
-               //                 //}
-               //            // }
-               //        // }
-               //     //MODESTE
-               //     //var z = 0;
-                    
-               //       //  for (int i = 6; i < 30; z++)
-               //         //    if (situation.Nombredepersonne == i)
-               //           //  {      z = z + 60590;
-               //     //if (situation.Revenumenage <= 586740 + z)
-               //     //{
-               //      //   prime = 40000;
-               //    // }
+                }
+                if (categorie.type == "Treshauteperformanceenergetique") 
+                {
+                    if (situation.Nombredepersonne == 1)
+                    {
+                        // TRES MODESTE
+                        if (situation.Revenumenage <= 20470)
+                        {
+                            prime = 1200;
+                        }
 
-               //     //MOYEN ET SUPERIEUR
-               //     //else if (situation.Revenumenage > 586740 + z)
-               //    // {
-               //      //   prime = 25000;
-               //     //}
-               
-                 }
+                        //MODESTE
+                        if (situation.Revenumenage <= 25068)
+                        {
+                            prime = 1200;
+                        }
+
+                        //MOYEN ET SUPERIEUR
+                        if (situation.Revenumenage > 25068)
+                        {
+                            prime = 600;
+                        }
+                    }
+                }
+                if (situation.Nombredepersonne == 2)
+                {
+                    // TRES MODESTE
+                    if (situation.Revenumenage <= 30044)
+                    {
+                        prime = 1200;
+                    }
+
+                    //MODESTE
+                    if (situation.Revenumenage <= 36572)
+                    {
+                        prime = 1200;
+                    }
+
+                    //MOYEN ET SUPERIEUR
+                    if (situation.Revenumenage > 36572)
+                    {
+                        prime = 600;
+                    }
+                }
+                if (situation.Nombredepersonne == 3)
+                {
+                    // TRES MODESTE
+                    if (situation.Revenumenage <= 36080)
+                    {
+                        prime =1200;
+                    }
+
+                    //MODESTE
+                    if (situation.Revenumenage <= 43924)
+                    {
+                        prime = 1200;
+                    }
+
+                    //MOYEN ET SUPERIEUR
+                    if (situation.Revenumenage > 43294)
+                    {
+                        prime = 600;
+                    }
+                }
+                if (situation.Nombredepersonne == 4)
+                {
+                    // TRES MODESTE
+                    if (situation.Revenumenage <= 42128)
+                    {
+                        prime = 1200;
+                    }
+
+                    //MODESTE
+                    if (situation.Revenumenage <= 51289)
+                    {
+                        prime = 1200;
+                    }
+
+                    //MOYEN ET SUPERIEUR
+                    if (situation.Revenumenage > 51289)
+                    {
+                        prime = 600;
+                    }
+                }
+                if (situation.Nombredepersonne == 5)
+                {
+                    // TRES MODESTE
+                    if (situation.Revenumenage <= 48198)
+                    {
+                        prime = 1200;
+                    }
+
+                    //MODESTE
+                    if (situation.Revenumenage <= 58674)
+                    {
+                        prime = 1200;
+                    }
+
+                    //MOYEN ET SUPERIEUR
+                    if (situation.Revenumenage > 58674)
+                    {
+                        prime = 600;
+                    }
+                }
+            }
+
+                if (travail.Name == "raccordement")
+            {
+                if (categorie.type == "réseau de chaleur EnR&R")
+                {
+                    if (situation.Nombredepersonne == 1)
+                    {
+                        // TRES MODESTE
+                        if (situation.Revenumenage <= 20470)
+                        {
+                            prime = 700;
+                        }
+
+                        //MODESTE
+                        if (situation.Revenumenage <= 25068)
+                        {
+                            prime = 700;
+                        }
+
+                        //MOYEN ET SUPERIEUR
+                        if (situation.Revenumenage > 25068)
+                        {
+                            prime = 450;
+                        }
+                    }
+                    if (situation.Nombredepersonne == 2)
+                    {
+                        // TRES MODESTE
+                        if (situation.Revenumenage <= 30044)
+                        {
+                            prime = 700;
+                        }
+
+                        //MODESTE
+                        if (situation.Revenumenage <= 36572)
+                        {
+                            prime = 700;
+                        }
+
+                        //MOYEN ET SUPERIEUR
+                        if (situation.Revenumenage > 36572)
+                        {
+                            prime = 450;
+                        }
+                    }
+                    if (situation.Nombredepersonne == 3)
+                    {
+                        // TRES MODESTE
+                        if (situation.Revenumenage <= 36080)
+                        {
+                            prime = 700;
+                        }
+
+                        //MODESTE
+                        if (situation.Revenumenage <= 43924)
+                        {
+                            prime = 700;
+                        }
+
+                        //MOYEN ET SUPERIEUR
+                        if (situation.Revenumenage > 43294)
+                        {
+                            prime = 450;
+                        }
+                    }
+                    if (situation.Nombredepersonne == 4)
+                    {
+                        // TRES MODESTE
+                        if (situation.Revenumenage <= 42128)
+                        {
+                            prime = 700;
+                        }
+
+                        //MODESTE
+                        if (situation.Revenumenage <= 51289)
+                        {
+                            prime = 700;
+                        }
+
+                        //MOYEN ET SUPERIEUR
+                        if (situation.Revenumenage > 51289)
+                        {
+                            prime = 450;
+                        }
+                    }
+                    if (situation.Nombredepersonne == 5)
+                    {
+                        // TRES MODESTE
+                        if (situation.Revenumenage <= 48198)
+                        {
+                            prime = 700;
+                        }
+
+                        //MODESTE
+                        if (situation.Revenumenage <= 58674)
+                        {
+                            prime = 700;
+                        }
+
+                        //MOYEN ET SUPERIEUR
+                        if (situation.Revenumenage > 58674)
+                        {
+                            prime = 450;
+                        }
+                    }
+                    //for (i = 6; i < 30; i++)
+                    //{
+                    //    if (situation.Nombredepersonne == i)
+                    //        // TRES MODESTE
+                    //        for (y = 0; y < 30)
+                    //            y = y + 60590;
+                    //        if (situation.Revenumenage <= 481980+y)
+                    //        {
+                    //            prime = 40000;
+                    //        }
+                    //    for (y = 0; y < 30)
+                    //        y = y + 60590;
+                    //    //MODESTE
+                    //    for (z = 0; z < 30)
+                    //        z = z + 60590;
+                    //    if (situation.Revenumenage <= 586740+z)
+                    //    {
+                    //        prime = 40000;
+                    //    }
+
+                    //    //MOYEN ET SUPERIEUR
+                    //    if (situation.Revenumenage > 586740+z)
+                    //    {
+                    //        prime = 25000;
+                    //    }
+                    //}
 
                 }
-            
+            }
 
             if (travail.Name == "appareil de chauffage")
             {
@@ -524,101 +658,101 @@ namespace PrimeSimulateur.Controllers
                     if (situation.Nombredepersonne == 1)
                     {
                         // TRES MODESTE
-                        if (situation.Revenumenage <= 204700)
+                        if (situation.Revenumenage <= 20470)
                         {
-                            prime = 40000;
+                            prime = 800;
                         }
 
                         //MODESTE
-                        if (situation.Revenumenage <= 250680)
+                        if (situation.Revenumenage <= 25068)
                         {
-                            prime = 40000;
+                            prime = 800;
                         }
 
                         //MOYEN ET SUPERIEUR
-                        if (situation.Revenumenage > 250680)
+                        if (situation.Revenumenage > 25068)
                         {
-                            prime = 25000;
+                            prime = 500;
                         }
                     }
                     if (situation.Nombredepersonne == 2)
                     {
                         // TRES MODESTE
-                        if (situation.Revenumenage <= 300440)
+                        if (situation.Revenumenage <= 30044)
                         {
-                            prime = 40000;
+                            prime = 800;
                         }
 
                         //MODESTE
-                        if (situation.Revenumenage <= 365720)
+                        if (situation.Revenumenage <= 36572)
                         {
-                            prime = 40000;
+                            prime = 800;
                         }
 
                         //MOYEN ET SUPERIEUR
-                        if (situation.Revenumenage > 365720)
+                        if (situation.Revenumenage > 36572)
                         {
-                            prime = 25000;
+                            prime = 500;
                         }
                     }
                     if (situation.Nombredepersonne == 3)
                     {
                         // TRES MODESTE
-                        if (situation.Revenumenage <= 360800)
+                        if (situation.Revenumenage <= 36080)
                         {
-                            prime = 40000;
+                            prime = 800;
                         }
 
                         //MODESTE
-                        if (situation.Revenumenage <= 439240)
+                        if (situation.Revenumenage <= 43924)
                         {
-                            prime = 40000;
+                            prime = 800;
                         }
 
                         //MOYEN ET SUPERIEUR
-                        if (situation.Revenumenage > 432940)
+                        if (situation.Revenumenage > 43294)
                         {
-                            prime = 25000;
+                            prime = 500;
                         }
                     }
                     if (situation.Nombredepersonne == 4)
                     {
                         // TRES MODESTE
-                        if (situation.Revenumenage <= 421280)
+                        if (situation.Revenumenage <= 42128)
                         {
-                            prime = 40000;
+                            prime = 800;
                         }
 
                         //MODESTE
-                        if (situation.Revenumenage <= 512890)
+                        if (situation.Revenumenage <= 51289)
                         {
-                            prime = 40000;
+                            prime = 800;
                         }
 
                         //MOYEN ET SUPERIEUR
-                        if (situation.Revenumenage > 512890)
+                        if (situation.Revenumenage > 51289)
                         {
-                            prime = 25000;
+                            prime = 500;
                         }
                     }
                     if (situation.Nombredepersonne == 5)
                     {
                         // TRES MODESTE
-                        if (situation.Revenumenage <= 481980)
+                        if (situation.Revenumenage <= 48198)
                         {
-                            prime = 40000;
+                            prime = 800;
                         }
 
                         //MODESTE
-                        if (situation.Revenumenage <= 586740)
+                        if (situation.Revenumenage <= 58674)
                         {
-                            prime = 40000;
+                            prime = 800;
                         }
 
                         //MOYEN ET SUPERIEUR
-                        if (situation.Revenumenage > 586740)
+                        if (situation.Revenumenage > 58674)
                         {
-                            prime = 25000;
+                            prime = 500;
                         }
                     }
                 }
@@ -630,19 +764,19 @@ namespace PrimeSimulateur.Controllers
                     if (situation.Nombredepersonne == 1)
                     {
                         // TRES MODESTE
-                        if (situation.Revenumenage <= 204700)
+                        if (situation.Revenumenage <= 20470)
                         {
                             prime = 40000;
                         }
 
                         //MODESTE
-                        if (situation.Revenumenage <= 250680)
+                        if (situation.Revenumenage <= 25068)
                         {
                             prime = 40000;
                         }
 
                         //MOYEN ET SUPERIEUR
-                        if (situation.Revenumenage > 250680)
+                        if (situation.Revenumenage > 25068)
                         {
                             prime = 25000;
                         }
@@ -650,19 +784,19 @@ namespace PrimeSimulateur.Controllers
                     if (situation.Nombredepersonne == 2)
                     {
                         // TRES MODESTE
-                        if (situation.Revenumenage <= 300440)
+                        if (situation.Revenumenage <= 30044)
                         {
                             prime = 40000;
                         }
 
                         //MODESTE
-                        if (situation.Revenumenage <= 365720)
+                        if (situation.Revenumenage <= 36572)
                         {
                             prime = 40000;
                         }
 
                         //MOYEN ET SUPERIEUR
-                        if (situation.Revenumenage > 365720)
+                        if (situation.Revenumenage > 36572)
                         {
                             prime = 25000;
                         }
@@ -670,19 +804,19 @@ namespace PrimeSimulateur.Controllers
                     if (situation.Nombredepersonne == 3)
                     {
                         // TRES MODESTE
-                        if (situation.Revenumenage <= 360800)
+                        if (situation.Revenumenage <= 36080)
                         {
                             prime = 40000;
                         }
 
                         //MODESTE
-                        if (situation.Revenumenage <= 439240)
+                        if (situation.Revenumenage <= 43924)
                         {
                             prime = 40000;
                         }
 
                         //MOYEN ET SUPERIEUR
-                        if (situation.Revenumenage > 432940)
+                        if (situation.Revenumenage > 43294)
                         {
                             prime = 25000;
                         }
@@ -690,19 +824,19 @@ namespace PrimeSimulateur.Controllers
                     if (situation.Nombredepersonne == 4)
                     {
                         // TRES MODESTE
-                        if (situation.Revenumenage <= 421280)
+                        if (situation.Revenumenage <= 42128)
                         {
                             prime = 40000;
                         }
 
                         //MODESTE
-                        if (situation.Revenumenage <= 512890)
+                        if (situation.Revenumenage <= 51289)
                         {
                             prime = 40000;
                         }
 
                         //MOYEN ET SUPERIEUR
-                        if (situation.Revenumenage > 512890)
+                        if (situation.Revenumenage > 51289)
                         {
                             prime = 25000;
                         }
@@ -710,19 +844,19 @@ namespace PrimeSimulateur.Controllers
                     if (situation.Nombredepersonne == 5)
                     {
                         // TRES MODESTE
-                        if (situation.Revenumenage <= 481980)
+                        if (situation.Revenumenage <= 48198)
                         {
                             prime = 40000;
                         }
 
                         //MODESTE
-                        if (situation.Revenumenage <= 586740)
+                        if (situation.Revenumenage <= 58674)
                         {
                             prime = 40000;
                         }
 
                         //MOYEN ET SUPERIEUR
-                        if (situation.Revenumenage > 586740)
+                        if (situation.Revenumenage > 58674)
                         {
                             prime = 25000;
                         }
@@ -736,19 +870,19 @@ namespace PrimeSimulateur.Controllers
                     if (situation.Nombredepersonne == 1)
                     {
                         // TRES MODESTE
-                        if (situation.Revenumenage <= 204700)
+                        if (situation.Revenumenage <= 20470)
                         {
                             prime = 40000;
                         }
 
                         //MODESTE
-                        if (situation.Revenumenage <= 250680)
+                        if (situation.Revenumenage <= 25068)
                         {
                             prime = 40000;
                         }
 
                         //MOYEN ET SUPERIEUR
-                        if (situation.Revenumenage > 250680)
+                        if (situation.Revenumenage > 25068)
                         {
                             prime = 25000;
                         }
@@ -756,19 +890,19 @@ namespace PrimeSimulateur.Controllers
                     if (situation.Nombredepersonne == 2)
                     {
                         // TRES MODESTE
-                        if (situation.Revenumenage <= 300440)
+                        if (situation.Revenumenage <= 30044)
                         {
                             prime = 40000;
                         }
 
                         //MODESTE
-                        if (situation.Revenumenage <= 365720)
+                        if (situation.Revenumenage <= 36572)
                         {
                             prime = 40000;
                         }
 
                         //MOYEN ET SUPERIEUR
-                        if (situation.Revenumenage > 365720)
+                        if (situation.Revenumenage > 36572)
                         {
                             prime = 25000;
                         }
@@ -776,19 +910,19 @@ namespace PrimeSimulateur.Controllers
                     if (situation.Nombredepersonne == 3)
                     {
                         // TRES MODESTE
-                        if (situation.Revenumenage <= 360800)
+                        if (situation.Revenumenage <= 36080)
                         {
                             prime = 40000;
                         }
 
                         //MODESTE
-                        if (situation.Revenumenage <= 439240)
+                        if (situation.Revenumenage <= 43924)
                         {
                             prime = 40000;
                         }
 
                         //MOYEN ET SUPERIEUR
-                        if (situation.Revenumenage > 432940)
+                        if (situation.Revenumenage > 43294)
                         {
                             prime = 25000;
                         }
@@ -796,19 +930,19 @@ namespace PrimeSimulateur.Controllers
                     if (situation.Nombredepersonne == 4)
                     {
                         // TRES MODESTE
-                        if (situation.Revenumenage <= 421280)
+                        if (situation.Revenumenage <= 42128)
                         {
                             prime = 40000;
                         }
 
                         //MODESTE
-                        if (situation.Revenumenage <= 512890)
+                        if (situation.Revenumenage <= 51289)
                         {
                             prime = 40000;
                         }
 
                         //MOYEN ET SUPERIEUR
-                        if (situation.Revenumenage > 512890)
+                        if (situation.Revenumenage > 51289)
                         {
                             prime = 25000;
                         }
@@ -816,19 +950,19 @@ namespace PrimeSimulateur.Controllers
                     if (situation.Nombredepersonne == 5)
                     {
                         // TRES MODESTE
-                        if (situation.Revenumenage <= 481980)
+                        if (situation.Revenumenage <= 48198)
                         {
                             prime = 40000;
                         }
 
                         //MODESTE
-                        if (situation.Revenumenage <= 586740)
+                        if (situation.Revenumenage <= 58674)
                         {
                             prime = 40000;
                         }
 
                         //MOYEN ET SUPERIEUR
-                        if (situation.Revenumenage > 586740)
+                        if (situation.Revenumenage > 58674)
                         {
                             prime = 25000;
                         }
@@ -840,24 +974,24 @@ namespace PrimeSimulateur.Controllers
             if (travail.Name == "isolation")
 
             {
-                if (categorie.type == "combleettoiture")
+                if (categorie.type == "comble et toiture")
                 {
                     if (situation.Nombredepersonne == 1)
                     {
                         // TRES MODESTE
-                        if (situation.Revenumenage <= 204700)
+                        if (situation.Revenumenage <= 20470)
                         {
                             prime = 30 * travail.surface;
                         }
 
                         //MODESTE
-                        if (situation.Revenumenage <= 250680)
+                        if (situation.Revenumenage <= 25068)
                         {
                             prime = 30 * travail.surface;
                         }
 
                         //MOYEN ET SUPERIEUR
-                        if (situation.Revenumenage > 250680)
+                        if (situation.Revenumenage > 25068)
                         {
                             prime = 30 * travail.surface;
                         }
@@ -865,19 +999,19 @@ namespace PrimeSimulateur.Controllers
                     if (situation.Nombredepersonne == 2)
                     {
                         // TRES MODESTE
-                        if (situation.Revenumenage <= 300440)
+                        if (situation.Revenumenage <= 30044)
                         {
                             prime = 30 * travail.surface;
                         }
 
                         //MODESTE
-                        if (situation.Revenumenage <= 365720)
+                        if (situation.Revenumenage <= 36572)
                         {
                             prime = 30 * travail.surface;
                         }
 
                         //MOYEN ET SUPERIEUR
-                        if (situation.Revenumenage > 365720)
+                        if (situation.Revenumenage > 36572)
                         {
                             prime = 30 * travail.surface;
                         }
@@ -885,19 +1019,19 @@ namespace PrimeSimulateur.Controllers
                     if (situation.Nombredepersonne == 3)
                     {
                         // TRES MODESTE
-                        if (situation.Revenumenage <= 360800)
+                        if (situation.Revenumenage <= 36080)
                         {
                             prime = 30 * travail.surface;
                         }
 
                         //MODESTE
-                        if (situation.Revenumenage <= 439240)
+                        if (situation.Revenumenage <= 43924)
                         {
                             prime = 30 * travail.surface;
                         }
 
                         //MOYEN ET SUPERIEUR
-                        if (situation.Revenumenage > 439240)
+                        if (situation.Revenumenage > 43924)
                         {
                             prime = 30 * travail.surface;
                         }
@@ -905,19 +1039,19 @@ namespace PrimeSimulateur.Controllers
                     if (situation.Nombredepersonne == 4)
                     {
                         // TRES MODESTE
-                        if (situation.Revenumenage <= 421280)
+                        if (situation.Revenumenage <= 42128)
                         {
                             prime = 30 * travail.surface;
                         }
 
                         //MODESTE
-                        if (situation.Revenumenage <= 512890)
+                        if (situation.Revenumenage <= 51289)
                         {
                             prime = 30 * travail.surface;
                         }
 
                         //MOYEN ET SUPERIEUR
-                        if (situation.Revenumenage > 512890)
+                        if (situation.Revenumenage > 51289)
                         {
                             prime = 30 * travail.surface;
                         }
@@ -925,19 +1059,19 @@ namespace PrimeSimulateur.Controllers
                     if (situation.Nombredepersonne == 5)
                     {
                         // TRES MODESTE
-                        if (situation.Revenumenage <= 481980)
+                        if (situation.Revenumenage <= 48198)
                         {
                             prime = 30 * travail.surface;
                         }
 
                         //MODESTE
-                        if (situation.Revenumenage <= 586740)
+                        if (situation.Revenumenage <= 58674)
                         {
                             prime = 30 * travail.surface;
                         }
 
                         //MOYEN ET SUPERIEUR
-                        if (situation.Revenumenage > 586740)
+                        if (situation.Revenumenage > 58674)
                         {
                             prime = 30 * travail.surface;
                         }
@@ -948,19 +1082,19 @@ namespace PrimeSimulateur.Controllers
                     if (situation.Nombredepersonne == 1)
                     {
                         // TRES MODESTE
-                        if (situation.Revenumenage <= 204700)
+                        if (situation.Revenumenage <= 20470)
                         {
                             prime = 20 * travail.surface;
                         }
 
                         //MODESTE
-                        if (situation.Revenumenage <= 250680)
+                        if (situation.Revenumenage <= 25068)
                         {
                             prime = 20 * travail.surface;
                         }
 
                         //MOYEN ET SUPERIEUR
-                        if (situation.Revenumenage > 250680)
+                        if (situation.Revenumenage > 25068)
                         {
                             prime = 20 * travail.surface;
                         }
@@ -968,19 +1102,19 @@ namespace PrimeSimulateur.Controllers
                     if (situation.Nombredepersonne == 2)
                     {
                         // TRES MODESTE
-                        if (situation.Revenumenage <= 300440)
+                        if (situation.Revenumenage <= 30044)
                         {
                             prime = 20 * travail.surface;
                         }
 
                         //MODESTE
-                        if (situation.Revenumenage <= 365720)
+                        if (situation.Revenumenage <= 36572)
                         {
                             prime = 20 * travail.surface;
                         }
 
                         //MOYEN ET SUPERIEUR
-                        if (situation.Revenumenage > 365720)
+                        if (situation.Revenumenage > 36572)
                         {
                             prime = 20 * travail.surface;
                         }
@@ -988,19 +1122,19 @@ namespace PrimeSimulateur.Controllers
                     if (situation.Nombredepersonne == 3)
                     {
                         // TRES MODESTE
-                        if (situation.Revenumenage <= 360800)
+                        if (situation.Revenumenage <= 36080)
                         {
                             prime = 20 * travail.surface;
                         }
 
                         //MODESTE
-                        if (situation.Revenumenage <= 439240)
+                        if (situation.Revenumenage <= 43924)
                         {
                             prime = 20 * travail.surface;
                         }
 
                         //MOYEN ET SUPERIEUR
-                        if (situation.Revenumenage > 439240)
+                        if (situation.Revenumenage > 43924)
                         {
                             prime = 20 * travail.surface;
                         }
@@ -1008,19 +1142,19 @@ namespace PrimeSimulateur.Controllers
                     if (situation.Nombredepersonne == 4)
                     {
                         // TRES MODESTE
-                        if (situation.Revenumenage <= 421280)
+                        if (situation.Revenumenage <= 42128)
                         {
                             prime = 20 * travail.surface;
                         }
 
                         //MODESTE
-                        if (situation.Revenumenage <= 512890)
+                        if (situation.Revenumenage <= 51289)
                         {
                             prime = 20 * travail.surface;
                         }
 
                         //MOYEN ET SUPERIEUR
-                        if (situation.Revenumenage > 512890)
+                        if (situation.Revenumenage > 51289)
                         {
                             prime = 20 * travail.surface;
                         }
@@ -1028,19 +1162,19 @@ namespace PrimeSimulateur.Controllers
                     if (situation.Nombredepersonne == 5)
                     {
                         // TRES MODESTE
-                        if (situation.Revenumenage <= 481980)
+                        if (situation.Revenumenage <= 48198)
                         {
                             prime = 20 * travail.surface;
                         }
 
                         //MODESTE
-                        if (situation.Revenumenage <= 586740)
+                        if (situation.Revenumenage <= 58674)
                         {
                             prime = 20 * travail.surface;
                         }
 
                         //MOYEN ET SUPERIEUR
-                        if (situation.Revenumenage > 586740)
+                        if (situation.Revenumenage > 58674)
                         {
                             prime = 20 * travail.surface;
                         }
@@ -1055,7 +1189,7 @@ namespace PrimeSimulateur.Controllers
             var role = claimsList[3].Value;
             ViewData["userRole"] = role;
             //pour le fichier csv 
-            _context.trace.AddAsync(new trace { Nom = travail.Name, Surface = travail.surface, Type = categorie.type, ClientId = client.ClientId, prime = prime, UserId = user_.Id, email = client.email ,}) ;
+            _context.trace.AddAsync(new trace { Nom = travail.Name, Surface = travail.surface, Type = categorie.type, ClientId = client.ClientId, prime = prime, UserId = user_.Id, email=user_.Email });
 
             _context.SaveChangesAsync();
             return prime;

@@ -11,6 +11,9 @@ using iTextSharp.text;
 using iTextSharp.text.pdf;
 using Microsoft.EntityFrameworkCore;
 using PrimeSimulateur.Models;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
 
 namespace PrimeSimulateur.GenerateDocuments
 {
@@ -25,12 +28,12 @@ namespace PrimeSimulateur.GenerateDocuments
         }
 
 
-        public async Task<byte[]> Generate(int ClientId)
+        public async Task<byte[]> Generate(string userEmail)
         {
-            return await CreateDevis();
+            return await CreateDevis(userEmail);
         }
 
-        private async Task<byte[]> CreateDevis()
+        private async Task<byte[]> CreateDevis(string userEmail)
         {
             var font = new Font(Font.FontFamily.HELVETICA, 8, 0, BaseColor.BLACK);
 
@@ -52,12 +55,12 @@ namespace PrimeSimulateur.GenerateDocuments
             };
 
             PdfContentByte canvas = stamper.GetOverContent(1);
-            //de la base
-            var client = new Client { ClientId = 1, firstName = "firstName", lastName = "lastName", email = "alamsa@gmail" };
 
-            //de la base
+            var client = (from C in _context.Clients
+                            where C.email == userEmail
+                          select C).FirstOrDefault();
             List<trace> list_trace = await (from T in _context.trace
-                                            where T.ClientId == 1
+                                            where T.email == userEmail
                                             select T).ToListAsync();
           
 
@@ -138,10 +141,7 @@ namespace PrimeSimulateur.GenerateDocuments
             sb.Append("Nom;");
             sb.Append("Surface;");
             sb.Append("Type;");
-            sb.Append("ClientId;");
             sb.Append("prime;");
-            sb.Append("UserId;");
-            sb.Append("email;");
             return sb;
         }
 
@@ -151,10 +151,7 @@ namespace PrimeSimulateur.GenerateDocuments
             sb.Append(objRD["Nom"].ToString().Replace(";", ",") + ";");
             sb.Append(objRD["Surface"].ToString().Replace(";", ",") + ";");
             sb.Append(objRD["Type"].ToString().Replace(";", ",") + ";");
-            sb.Append(objRD["ClientId"].ToString().Replace(";", ",") + ";");
             sb.Append(objRD["prime"].ToString().Replace(";", ",") + ";");
-            sb.Append(objRD["UserId"].ToString().Replace(";", ",") + ";");
-            sb.Append(objRD["email"].ToString().Replace(";", ",") + ";");
 
             return sb;
         }

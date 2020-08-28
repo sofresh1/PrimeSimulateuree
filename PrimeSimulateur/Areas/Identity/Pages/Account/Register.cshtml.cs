@@ -105,7 +105,7 @@ namespace PrimeSimulateur.Areas.Identity.Pages.Account
 
                 if (result.Succeeded)
                 {
-                    _userManager.AddToRoleAsync(user, "Admin").Wait();
+                    _userManager.AddToRoleAsync(user, "User").Wait();
                     _logger.LogInformation("User created a new account with password.");
                     var s = _context.Clients.Add(new Client {email= returnedUser.Email,password="xor" ,firstName= user.FirstName, lastName = user.LastName , number ="028119021" });
                     try {

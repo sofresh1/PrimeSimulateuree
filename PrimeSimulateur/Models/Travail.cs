@@ -14,7 +14,7 @@ namespace PrimeSimulateur.Models
         [Required]
         [Key]
         public int TravailId { get; set; }
-
+        [Required]
         public string Name { get; set; }
         public float surface { get; set; }
 

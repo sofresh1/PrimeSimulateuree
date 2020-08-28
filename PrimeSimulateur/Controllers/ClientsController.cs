@@ -10,7 +10,7 @@ using PrimeSimulateur.Models;
 
 namespace PrimeSimulateur.Controllers
 {
-    [Authorize(Roles = "User")]
+    [Authorize(Roles = "Admin")]
    
     public class ClientsController : Controller
     {

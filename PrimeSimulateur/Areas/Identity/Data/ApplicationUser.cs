@@ -9,6 +9,7 @@ using System.Threading.Tasks;
 namespace PrimeSimulateur.Areas.Identity.Data
 {
     public class ApplicationUser: IdentityUser
+
    
     {
         [PersonalData]

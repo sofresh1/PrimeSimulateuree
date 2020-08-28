@@ -4,6 +4,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
@@ -16,17 +17,39 @@ namespace PrimeSimulateur.Controllers
     public class TravailsController : Controller
     {
         private readonly MyDbContext _context;
+        private readonly UserManager<IdentityUser> _userManager;
 
-        public TravailsController(MyDbContext context)
+        public TravailsController(MyDbContext context, UserManager<IdentityUser> userManager)
         {
             _context = context;
+            _userManager = userManager;
         }
 
         // GET: Travails
         public async Task<IActionResult> Index()
-        {
-            var myDbContext = _context.Travails.Include(t => t.Logement);
-            return View(await myDbContext.ToListAsync());
+      
+             {
+            var user_ = await _userManager.FindByEmailAsync(User.Identity.Name);
+        var claimsList = User.Claims.ToList();
+        var role = claimsList[3].Value;
+        var clientId = (from C in _context.Clients
+                        where C.email == user_.Email
+                        select C.ClientId).FirstOrDefault();
+
+            if (role == "User")
+            {
+                var myDbContext = (from T in _context.Travails
+                                   join L in _context.Logements on T.LogementId equals L.LogementId
+                                   join C in _context.Clients on L.ClientId equals C.ClientId
+                                   where C.ClientId == clientId
+                                   select T);
+                return View(await myDbContext.ToListAsync());
+    }
+            else
+            {
+                var myDbContext = _context.Travails.Include(t => t.Logement);
+                return View(await myDbContext.ToListAsync());
+}
         }
 
         // GET: Travails/Details/5
@@ -49,9 +72,16 @@ namespace PrimeSimulateur.Controllers
         }
 
         // GET: Travails/Create
-        public IActionResult Create()
+        public async Task<IActionResult> CreateAsync()
         {
-            ViewData["LogementId"] = new SelectList(_context.Logements, "LogementId", "adresse");
+            var user_ = await _userManager.FindByEmailAsync(User.Identity.Name);
+            var logements = (from T in _context.Travails
+                             join L in _context.Logements on T.LogementId equals L.LogementId
+                             join C in _context.Clients on L.ClientId equals C.ClientId
+                             where C.email == user_.Email
+                             select new { T.LogementId, L.adresse}) ;
+           // ViewData["LogementId"] = new SelectList(_context.Logements, "LogementId", "adresse");
+            ViewData["LogementId"] = new SelectList(logements, "LogementId", "adresse");
             return View();
         }
 

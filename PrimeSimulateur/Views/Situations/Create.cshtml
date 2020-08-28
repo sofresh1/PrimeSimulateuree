@@ -18,13 +18,9 @@
                 <span asp-validation-for="Nombredepersonne" class="text-danger"></span>
             </div>
             <div class="form-group">
-                <label asp-for="Revenumenage" class="control-label"></label>
-                <input asp-for="Revenumenage" class="form-control" />
-                <span asp-validation-for="Revenumenage" class="text-danger"></span>
-            </div>
-            <div class="form-group">
-                <label asp-for="ClientId" class="control-label"></label>
-                <select asp-for="ClientId" class ="form-control" asp-items="ViewBag.ClientId"></select>
+                <label asp-for="Revenumenage" class="control-label"></label><label>(/an) en €</label>
+                <input asp-for="Revenumenage" class="form-control" /><label> 
+                <span asp-validation-for="Revenumenage" class="text-danger"></span><label></label>
             </div>
             <div class="form-group">
                 <input type="submit" value="Create" class="btn btn-primary" />

@@ -19,7 +19,6 @@ namespace PrimeSimulateur.Models
 
         public string TypeEnergie { get; set; }
         public string surface { get; set; }
-
         public int ClientId { get; set; }
         public Client Client { get; set; }
 
